@@ -20,14 +20,26 @@ io.on("connection", (socket) => {
     "Someone joined our server using socket.io.  Their socket id is",
     socket.id
   );
-  
+  socket.emit("peerNumber", io.engine.clientsCount);
   peers[socket.id] = {};
 
   console.log("Current peers:", peers);
 
-  socket.on("peer", (data) => {
-    document.getElementById("popup").visibility = "visible";
-    document.getElementById("popuptext").visibility = "visible";
+  socket.on("newPeer", (client) => {
+    clientCounter = client;
+    console.log(io.engine.clientsCount);
+    // console.log("current peer number", clientCounter);
+    // socket.emit("currentPeer", clientCounter);
+  });
+
+  socket.on("throw", (data) => {
+    console.log("throw", data);
+    if (io.engine.clientsCount>1){
+      setTimeout(function () { 
+        socket.broadcast.emit("throwback", data);
+        console.log("throwing back");
+      }, 1000);
+    }
   });
 
   socket.on("msg", (data) => {
@@ -39,5 +51,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("Someone with ID", socket.id, "left the server");
     delete peers[socket.id];
+    socket.emit("peerNumber", io.engine.clientsCount);
   });
 });

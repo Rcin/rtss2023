@@ -3,14 +3,43 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
 
-let camera, scene, renderer, controls, container;
+let camera, scene, renderer, controls, container, sound;
 
-let frisbee, playerCollider, playerVelocity, playerDirection, sphere, spheres, sphereIdx, mouseTime, keyState = {};
+let frisbee, frisbeeLoaded = false, throwFris = false, throwbackFris = false;
 
 let socket = io();
 
 function init(){
+    setupScene();
 
+    let blocker = document.getElementById( 'blocker' );
+    let instructions = document.getElementById( 'instructions' );
+    blocker.addEventListener( 'click', function () {
+        controls.lock();
+        blocker.style.display = 'none';
+        document.getElementsByClassName("popup")[0].style.opacity = 100;
+        document.getElementById("instructions").style.opacity = 100;
+        loadSound();
+    });
+	controls.addEventListener( 'lock', function () {
+        blocker.style.display = 'none';
+        console.log("locked");
+    } );
+    
+    controls.addEventListener( 'unlock', function () {
+        blocker.style.display = 'block';
+        document.getElementsByClassName("popup")[0].style.opacity = 0;
+        instructions.style.opacity = 0;
+        console.log("unlocked");
+    } );
+    scene.add(controls.getObject());
+    
+    loadfrisbee();
+    setupSocket();
+    animate();
+}
+
+function setupScene(){
     scene = new THREE.Scene();
     scene.background = new THREE.Color( '#72abc0' );
 
@@ -37,30 +66,12 @@ function init(){
     //controls
     controls = new PointerLockControls( camera, document.body );
 
-    let blocker = document.getElementById( 'blocker' );
-    let instructions = document.getElementById( 'instructions' );
-    blocker.addEventListener( 'click', function () {
-        controls.lock();
-    });
-	controls.addEventListener( 'lock', function () {
-        blocker.style.display = 'none';
-        instructions.style.display = 'none';
-        console.log("locked");
-    } );
-    
-    controls.addEventListener( 'unlock', function () {
-        blocker.style.display = 'block';
-        instructions.style.display = 'block';
-        console.log("unlocked");
-    } );
-    scene.add(controls.getObject());
-
     //ambient light
     let ambientColor = new THREE.Color({color: 'white'});
     let ambientLight = new THREE.AmbientLight(ambientColor, 0.6);
     scene.add(ambientLight);
 
-    //plane
+    //box
     const planegeo = new THREE.PlaneGeometry( 500, 500 );
     const planemat = new THREE.MeshBasicMaterial( {color: '#72abc0', side: THREE.DoubleSide} );
     const plane = new THREE.Mesh( planegeo, planemat );
@@ -92,13 +103,8 @@ function init(){
     top.rotateX( Math.PI / 2 );
     top.position.set(0, 500, 0);
 
-    // let fog = new THREE.FogExp2(0x11111f, 0.0005);
+    //fog
     scene.fog = new THREE.Fog( 'white', 0, 50 );
-    // scene.fog=new THREE.FogExp2(0x11111f, 0.0005);
-    // renderer.setClearColor(scene.fog.color);
-    
-    loadfrisbee();
-    animate();
 }
 
 function loadfrisbee(){
@@ -109,10 +115,48 @@ function loadfrisbee(){
         frisbee.position.set(0, 5, 3);
         frisbee.castShadow = true;
         scene.add(frisbee);
+        frisbeeLoaded = true;
     });
     camera.lookAt(0, 5,-2);
 }
 
+//sound
+function loadSound(){
+    const listener = new THREE.AudioListener();
+    const audioListenerMesh = new THREE.Mesh(
+        new THREE.BoxGeometry( 1, 1, 1 ),
+        new THREE.MeshBasicMaterial( { color: 'blue' } )
+    );
+    audioListenerMesh.add( listener );
+    audioListenerMesh.position.set(0, 0, 0);
+    scene.add( audioListenerMesh );
+    
+    const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry( 1, 32, 16 ),
+        new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true } )
+    );
+    mesh.position.set(0, 5, 3);
+    
+
+    if (frisbeeLoaded == true){
+        // camera.add( listener );
+        sound = new THREE.PositionalAudio( listener );
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load( 'flyingwoosh.mp3', function( buffer ) {
+            sound.setBuffer( buffer );
+            sound.setDistanceModel("exponential");
+            sound.setRefDistance(1);
+            sound.setRolloffFactor(3);
+            sound.setLoop( false );
+            sound.setVolume( 0.9 );
+            // console.log("sound loaded");
+        });
+        // frisbee.add(sound);
+        sound.position.set(0, 5, 3);
+        mesh.add(sound);
+        scene.add(mesh);
+    }
+}
 // let frisbeeThrown = false;
 // function throwFrisbee(){
 //     let velocity = -250;
@@ -132,48 +176,82 @@ function onWindowResize(){
     renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
-socket.on("connect", () => {
-    console.log("connected");
-});
+function setupSocket(){
+    let clientCounter = 0;
+    socket.on("connect", () => {
+        console.log("connected");
+    });
+    
+    socket.on("peerNumber", (peerCount) => {
+        console.log("current peer number", peerCount);
+        if (peerCount > 1){
+            console.log("more than 1 peer");
+        }
+    });
 
-let throwFris = false;
+    socket.on("throwback", (data) => {
+        console.log("throwback", data);
+        throwbackFris = true;
+    });
+}
+
 document.body.addEventListener( 'keydown', ( event ) => {
-    // let delta = ( time - prevTime ) / 500;
     if (event.code == 'Space'){
         console.log('throw');
         throwFris = true;
-        // if (frisbeeThrown == false){
-
-        // }
+        socket.emit("throw", {id: socket.id, position: frisbee.position});
     }
 });
 
 let frameCount = 0;
 //animate
 function animate(){
-    // console.log('throw');
-    frameCount++;
+    let soundPlayed = false;
     if (frisbee != null && throwFris == true){
+        frameCount++;
         // console.log("pre-throw", frisbee.position);
         if (frisbee.position.z >= -250){
-        frisbee.position.z -= frameCount*0.0005;
-        frisbee.rotation.y += frameCount*0.006;
+        frisbee.position.z -= frameCount*0.05;
+        frisbee.rotation.y += frameCount*0.06;
+        if (sound.isPlaying == false){
+            sound.isPlaying = true;
+            sound.play();
+            console.log("sound played");
+            } else{
+                // sound.stop();
+                // sound.isPlaying = false;
+                console.log("sound stopped");
+            }
         } else {
             throwFris = false;
             frameCount = 0;
-            setTimeout(function(){frisbee.position.z = 3;}, 2000);
+            // setTimeout(function(){frisbee.position.z = 3;}, 2000);
+            // console.log("thrown", frisbee.position)
+            console.log("done throwing");
         }
-        
-        console.log("thrown", frisbee.position)
+
         frisbee.position.needsUpdate = true;
     }
-
-
-    // controls.update(delta);
-    // let prevTime = performance.now();
+    if (frisbee != null && throwbackFris == true){
+        frameCount++;
+        if(frisbee.position.z <= 3){
+            frisbee.position.z += frameCount*0.005;
+            frisbee.rotation.y -= frameCount*0.06;
+            if (sound.isPlaying == false){
+            sound.play();
+            }else{
+                sound.stop();
+            }
+            // console.log("throwing back")
+        } else {
+            throwbackFris = false;
+            frameCount = 0;
+            console.log("done throwing back");
+            // soundPlayed = false;  
+        }
+    } 
+        
     
-    // console.log("time is", delta);
-
 
     renderer.render(scene, camera);
     requestAnimationFrame(animate);

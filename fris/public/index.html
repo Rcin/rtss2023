@@ -3,68 +3,19 @@
 	<head>
 		<meta charset="utf-8">
 		<title>Frisbee friend</title>
-		<style>
-			body { 
-				margin: 0; 
-				font-family: InstrumentSerif;
-				font-size: 1.5rem;
-			}
-
-			@font-face{
-				font-family: 'InstrumentSerif';
-				src: url('/fonts/InstrumentSerif-Regular.ttf');
-			}
-
-			#blocker {
-				position: absolute;
-				width: 100%;
-				height: 100%;
-				background-color: #72abc0;
-			}
-
-			#instructions{
-				position: absolute;
-				width: 300px;
-				height: 50px;
-				/* background-color: grey; */
-				color: white;
-				left: 20vw;
-				top: 50vh;
-			}
-
-			#rightinstructions {
-				position: absolute;
-				width: 300px;
-				height: 50px;
-				/* background-color: grey; */
-				color: white;
-				right: 10vw;
-				top: 50vh;
-			}
-
-			#popup{
-				position: absolute;
-				/* color: white; */
-				left: 20vw;
-				top: 50vh;
-				visibility: hidden;
-			}
-			#popuptext{
-				color: white;
-				visibility: hidden;
-			}
-			
-		</style>
+	<link rel="stylesheet" href="styles.css"></link>
 	</head>
 	<body>
 		<div id="container">
-			<div id="blocker">
-				<p id="instructions">Press "Space" to throw a frisbee 
-				<br/>and wait</p>
-				<p id="rightinstructions">Click to Enter</p>
+			<div class="center" id="blocker">
+				<p class="center" id="enter">Click to Enter</p>
 			</div>
-			<div id="popup">
-				<p id="popupText">You friend has entered.</p>
+
+			<div class="popup">
+				<p id="instructions">Press "Space" to throw and catch frisbee </p>
+			</div>
+			<div class="popup">
+				<p id="newconnection">You friend has entered.</p>
 			</div>
 		</div>
 		
