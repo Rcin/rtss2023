@@ -2,20 +2,23 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>Frisbee friend</title>
+		<title>Frisbee Friend</title>
 	<link rel="stylesheet" href="styles.css"></link>
 	</head>
 	<body>
 		<div id="container">
 			<div class="center" id="blocker">
-				<p class="center" id="enter">Click to Enter</p>
+				<p class="center enter">Your Frisbee Friend</p>
+				<div class="popupbottom fadinganimation">
+					<p class="enter">Click to Enter</p>
+				</div>
 			</div>
 
-			<div class="popup">
+			<div class="popupbottom fadinganimation">
 				<p id="instructions">Press "Space" to throw and catch frisbee </p>
 			</div>
-			<div class="popup">
-				<p id="newconnection">You friend has entered.</p>
+			<div class="popuptop">
+				<p id="newconnection">flying back to you from <span id="ipaddress"></span> </p>
 			</div>
 		</div>
 		
